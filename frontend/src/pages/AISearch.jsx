@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Search, Loader2, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -7,14 +7,14 @@ import HotelCard from "@/components/HotelCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { mockHotels } from "@/data/mockHotels";
+import { useGetHotelsBySearchQuery } from "@/lib/api";
 import { toast } from "sonner";
 
 const AISearch = () => {
   const [query, setQuery] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
-  const [results, setResults] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const [hasShownToast, setHasShownToast] = useState(false);
 
   const exampleQueries = [
     "Find luxury beachfront hotels under $400 in tropical locations",
@@ -23,56 +23,54 @@ const AISearch = () => {
     "Romantic getaway destinations with ocean views",
   ];
 
+  // Use the API query hook
+  const {
+    data: hotels,
+    isLoading,
+    isError,
+    error,
+    isFetching,
+  } = useGetHotelsBySearchQuery(searchQuery, {
+    skip: !searchQuery, // Skip the query if searchQuery is empty
+  });
+
   const handleSearch = async () => {
     if (!query.trim()) {
       toast.error("Please enter a search query");
       return;
     }
 
-    setIsSearching(true);
+    setSearchQuery(query);
     setSearchPerformed(true);
-
-    // Simulate AI search with mock results
-    setTimeout(() => {
-      const keywords = query.toLowerCase();
-      const filtered = mockHotels.filter(hotel => {
-        const hotelText = `${hotel.name} ${hotel.location} ${hotel.city} ${hotel.description} ${hotel.amenities.join(" ")}`.toLowerCase();
-        
-        if (keywords.includes("under")) {
-          const priceMatch = keywords.match(/under\s*\$?(\d+)/);
-          if (priceMatch && hotel.price > parseInt(priceMatch[1])) {
-            return false;
-          }
-        }
-
-        if (keywords.includes("5-star") || keywords.includes("luxury")) {
-          return hotel.stars === 5;
-        }
-
-        if (keywords.includes("beach") && hotel.location.toLowerCase().includes("ocean")) {
-          return true;
-        }
-        if (keywords.includes("mountain") && hotel.location.toLowerCase().includes("alps")) {
-          return true;
-        }
-        if (keywords.includes("city") && (hotel.city.includes("New York") || hotel.city.includes("Dubai"))) {
-          return true;
-        }
-
-        return hotelText.includes(keywords.split(" ")[0]);
-      });
-
-      setResults(filtered.length > 0 ? filtered : mockHotels.slice(0, 4));
-      setIsSearching(false);
-      toast.success(`Found ${filtered.length > 0 ? filtered.length : 4} hotels matching your criteria`);
-    }, 1500);
+    setHasShownToast(false);
+    toast.info("Searching for hotels...");
   };
 
   const clearSearch = () => {
     setQuery("");
-    setResults([]);
+    setSearchQuery("");
     setSearchPerformed(false);
+    setHasShownToast(false);
   };
+
+  // Show success toast when results are loaded
+  useEffect(() => {
+    if (searchPerformed && !isLoading && !isFetching && hotels && !hasShownToast) {
+      toast.success(`Found ${hotels.length} hotels matching your criteria`);
+      setHasShownToast(true);
+    }
+  }, [searchPerformed, isLoading, isFetching, hotels, hasShownToast]);
+
+  // Show error toast
+  useEffect(() => {
+    if (isError && !hasShownToast) {
+      toast.error(`Search failed: ${error?.message || 'Unknown error'}`);
+      setHasShownToast(true);
+    }
+  }, [isError, error, hasShownToast]);
+
+  const isSearching = isLoading || isFetching;
+  const results = hotels || [];
 
   return (
     <div className="min-h-screen">
@@ -183,7 +181,7 @@ const AISearch = () => {
             )}
           </motion.div>
 
-          {/* Results */}
+          {/* Loading State */}
           {isSearching && (
             <div className="flex items-center justify-center py-20">
               <div className="text-center">
@@ -195,6 +193,45 @@ const AISearch = () => {
             </div>
           )}
 
+          {/* Error State */}
+          {isError && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center py-12"
+            >
+              <div className="glass-card p-8 max-w-md mx-auto">
+                <p className="text-red-500 mb-4">
+                  Error loading search results: {error?.message || 'Unknown error'}
+                </p>
+                <Button onClick={clearSearch} variant="outline">
+                  <X className="w-4 h-4 mr-2" />
+                  Clear Search
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* No Results State */}
+          {!isSearching && searchPerformed && results.length === 0 && !isError && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center py-12"
+            >
+              <div className="glass-card p-8 max-w-md mx-auto">
+                <p className="text-muted-foreground mb-4">
+                  No hotels found for "{searchQuery}"
+                </p>
+                <Button onClick={clearSearch} variant="outline">
+                  <X className="w-4 h-4 mr-2" />
+                  Try Another Search
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Results */}
           {!isSearching && results.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -212,7 +249,11 @@ const AISearch = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {results.map((hotel, index) => (
-                  <HotelCard key={hotel.id} hotel={hotel} index={index} />
+                  <HotelCard 
+                    key={hotel._id} 
+                    hotel={hotel} 
+                    index={index} 
+                  />
                 ))}
               </div>
             </motion.div>
