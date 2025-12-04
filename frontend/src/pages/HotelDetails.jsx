@@ -1,17 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Star,
-  MapPin,
-  Wifi,
-  Utensils,
-  Dumbbell,
-  Car,
-  Coffee,
-  ChevronLeft,
-  ChevronRight,
-  Calendar,
+  Star, MapPin, Wifi, Utensils, Dumbbell, Car, Coffee,
+  ChevronLeft, ChevronRight, Calendar,
 } from "lucide-react";
 
 import Navbar from "@/components/Navbar";
@@ -23,21 +15,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
 import { useGetHotelByIdQuery } from "@/lib/api";
+import { useGetUserBookingsQuery } from "@/lib/bookingApi";
 import { toast } from "sonner";
 
 const HotelDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Load hotel from API
   const { data: hotel, isLoading, isError } = useGetHotelByIdQuery(id);
 
   const [currentImage, setCurrentImage] = useState(0);
@@ -46,7 +34,99 @@ const HotelDetails = () => {
   const [guests, setGuests] = useState("2");
   const [selectedRoom, setSelectedRoom] = useState("");
 
-  // Loading State
+  const { data: bookings = [] } = useGetUserBookingsQuery({
+    userId: window.Clerk?.user?.id,
+    status: "ALL",
+  });
+
+  const unavailableDates = useMemo(() => {
+    if (!selectedRoom || !bookings.length) return [];
+
+    return bookings
+      .filter((b) => b.roomNumber === selectedRoom)
+      .flatMap((b) => {
+        const start = new Date(b.checkInDate);
+        const end = new Date(b.checkOutDate);
+        const roomDates = [];
+        for (let d = new Date(start); d < end; d = new Date(d.getTime() + 86400000)) {
+          roomDates.push(d.toISOString().split("T")[0]);
+        }
+        return roomDates;
+      });
+  }, [bookings, selectedRoom]);
+
+  const isDateUnavailable = (date) => unavailableDates.includes(date);
+
+  const calculateTotalAmount = () => {
+    if (!checkIn || !checkOut || !selectedRoom) return 0;
+    
+    const nights = Math.ceil(
+      (new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)
+    );
+    
+    const roomType = hotel?.roomTypes.find((r) => r.name === selectedRoom);
+    const pricePerNight = roomType?.price || hotel?.price || 0;
+    
+    return nights * pricePerNight;
+  };
+
+  const handleProceedToPayment = () => {
+    if (!checkIn || !checkOut || !selectedRoom) {
+      toast.error("Please fill in all booking details");
+      return;
+    }
+
+    if (new Date(checkIn) >= new Date(checkOut)) {
+      toast.error("Check-out date must be after check-in date");
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (new Date(checkIn) < today) {
+      toast.error("Check-in date cannot be in the past");
+      return;
+    }
+
+    const selectedDates = [];
+    for (
+      let d = new Date(checkIn);
+      d < new Date(checkOut);
+      d = new Date(d.getTime() + 86400000)
+    ) {
+      selectedDates.push(d.toISOString().split("T")[0]);
+    }
+
+    const conflict = selectedDates.some((d) => isDateUnavailable(d));
+    if (conflict) {
+      toast.error("Selected dates are not available. Please choose other dates.");
+      return;
+    }
+
+    // Pass data to payment page WITHOUT saving to database
+    const bookingData = {
+      hotelId: hotel._id,
+      hotelName: hotel.name,
+      hotelImage: hotel.images[0],
+      hotelLocation: hotel.location,
+      roomNumber: selectedRoom,
+      checkIn,
+      checkOut,
+      guests: Number(guests),
+      totalAmount: calculateTotalAmount(),
+    };
+
+    navigate("/payment", { state: bookingData });
+  };
+
+  const amenityIcons = {
+    WiFi: Wifi,
+    Restaurant: Utensils,
+    Gym: Dumbbell,
+    Parking: Car,
+    "Room Service": Coffee,
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -55,7 +135,6 @@ const HotelDetails = () => {
     );
   }
 
-  // Error or hotel not found
   if (isError || !hotel) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -67,26 +146,6 @@ const HotelDetails = () => {
     );
   }
 
-  // Amenity Icons
-  const amenityIcons = {
-    WiFi: Wifi,
-    Restaurant: Utensils,
-    Gym: Dumbbell,
-    Parking: Car,
-    "Room Service": Coffee,
-  };
-
-  // Handle Booking
-  const handleBooking = () => {
-    if (!checkIn || !checkOut || !selectedRoom) {
-      toast.error("Please fill in all booking details");
-      return;
-    }
-    toast.success("Proceeding to payment...");
-    setTimeout(() => navigate("/success"), 1000);
-  };
-
-  // Image Navigation
   const nextImage = () => setCurrentImage((prev) => (prev + 1) % hotel.images.length);
   const prevImage = () =>
     setCurrentImage((prev) => (prev - 1 + hotel.images.length) % hotel.images.length);
@@ -97,12 +156,10 @@ const HotelDetails = () => {
 
       <div className="pt-24 pb-12">
         <div className="container mx-auto px-4">
-          {/* Back Button */}
           <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6 gap-2">
             <ChevronLeft className="w-4 h-4" /> Back
           </Button>
 
-          {/* Image Gallery */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -116,7 +173,6 @@ const HotelDetails = () => {
 
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
 
-            {/* Navigation Arrows */}
             <button
               onClick={prevImage}
               className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-sm p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/30"
@@ -131,7 +187,6 @@ const HotelDetails = () => {
               <ChevronRight className="w-6 h-6 text-white" />
             </button>
 
-            {/* Info Overlay */}
             <div className="absolute bottom-8 left-8 text-white z-10">
               {hotel.featured && (
                 <Badge className="mb-3 bg-accent text-accent-foreground">Featured</Badge>
@@ -156,9 +211,7 @@ const HotelDetails = () => {
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
             <div className="lg:col-span-2 space-y-8">
-              {/* Rating */}
               <Card className="p-6">
                 <div className="flex items-center gap-4">
                   <div className="bg-primary text-primary-foreground rounded-xl p-4 text-center">
@@ -187,7 +240,6 @@ const HotelDetails = () => {
                 </div>
               </Card>
 
-              {/* Tabs */}
               <Tabs defaultValue="overview" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -195,7 +247,6 @@ const HotelDetails = () => {
                   <TabsTrigger value="rooms">Rooms</TabsTrigger>
                 </TabsList>
 
-                {/* Overview */}
                 <TabsContent value="overview" className="space-y-4">
                   <Card className="p-6">
                     <h2 className="text-2xl font-display font-semibold mb-4">
@@ -207,7 +258,6 @@ const HotelDetails = () => {
                   </Card>
                 </TabsContent>
 
-                {/* Amenities */}
                 <TabsContent value="amenities" className="space-y-4">
                   <Card className="p-6">
                     <h2 className="text-2xl font-display font-semibold mb-4">Amenities</h2>
@@ -228,7 +278,6 @@ const HotelDetails = () => {
                   </Card>
                 </TabsContent>
 
-                {/* Rooms */}
                 <TabsContent value="rooms" className="space-y-4">
                   {hotel.roomTypes.map((room) => (
                     <Card key={room.name} className="p-6">
@@ -241,7 +290,9 @@ const HotelDetails = () => {
                         </div>
 
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">${room.price}</div>
+                          <div className="text-2xl font-bold text-primary">
+                            ${room.price}
+                          </div>
                           <div className="text-sm text-muted-foreground">per night</div>
                         </div>
                       </div>
@@ -251,16 +302,16 @@ const HotelDetails = () => {
               </Tabs>
             </div>
 
-            {/* Booking Card */}
             <div className="lg:col-span-1">
-              <div className="glass-card p-6 sticky top-24">
+              <Card className="p-6 sticky top-24">
                 <div className="mb-6">
-                  <div className="text-3xl font-bold text-primary mb-1">${hotel.price}</div>
+                  <div className="text-3xl font-bold text-primary mb-1">
+                    ${hotel.price}
+                  </div>
                   <div className="text-muted-foreground">per night</div>
                 </div>
 
                 <div className="space-y-4">
-                  {/* Room Type */}
                   <div>
                     <Label className="mb-2 block">Room Type</Label>
                     <Select value={selectedRoom} onValueChange={setSelectedRoom}>
@@ -277,7 +328,6 @@ const HotelDetails = () => {
                     </Select>
                   </div>
 
-                  {/* Check-in */}
                   <div>
                     <Label className="mb-2 block flex items-center gap-2">
                       <Calendar className="w-4 h-4" /> Check-in
@@ -286,10 +336,10 @@ const HotelDetails = () => {
                       type="date"
                       value={checkIn}
                       onChange={(e) => setCheckIn(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
                     />
                   </div>
 
-                  {/* Check-out */}
                   <div>
                     <Label className="mb-2 block flex items-center gap-2">
                       <Calendar className="w-4 h-4" /> Check-out
@@ -298,33 +348,52 @@ const HotelDetails = () => {
                       type="date"
                       value={checkOut}
                       onChange={(e) => setCheckOut(e.target.value)}
+                      min={checkIn || new Date().toISOString().split("T")[0]}
                     />
                   </div>
 
-                  {/* Guests */}
                   <div>
                     <Label className="mb-2 block">Guests</Label>
                     <Input
                       type="number"
                       min="1"
+                      max="10"
                       value={guests}
                       onChange={(e) => setGuests(e.target.value)}
                     />
                   </div>
 
+                  {checkIn && checkOut && selectedRoom && (
+                    <div className="pt-4 border-t">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-muted-foreground">Total</span>
+                        <span className="text-2xl font-bold text-primary">
+                          ${calculateTotalAmount()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {Math.ceil(
+                          (new Date(checkOut) - new Date(checkIn)) /
+                            (1000 * 60 * 60 * 24)
+                        )}{" "}
+                        nights
+                      </p>
+                    </div>
+                  )}
+
                   <Button
-                    className="w-full bg-primary hover:bg-primary-light"
+                    className="w-full bg-primary hover:bg-primary/90"
                     size="lg"
-                    onClick={handleBooking}
+                    onClick={handleProceedToPayment}
                   >
-                    Book Now
+                    Proceed to Payment
                   </Button>
 
                   <p className="text-sm text-muted-foreground text-center">
                     You won't be charged yet
                   </p>
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
         </div>
