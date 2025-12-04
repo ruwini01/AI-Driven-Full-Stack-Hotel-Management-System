@@ -1,19 +1,24 @@
-import { configureStore } from "@reduxjs/toolkit";
-import counterReducer from "./features/counterSlice";
-import searchReducer from "./features/searchSlice";
-import { api } from "./api";
-import { setupListeners } from "@reduxjs/toolkit/query";
+// File: frontend/src/lib/store.js
+
+import { configureStore } from '@reduxjs/toolkit';
+import { setupListeners } from '@reduxjs/toolkit/query';
+import { api } from './api'; // Your existing API
+import { bookingApi } from './bookingApi'; // New booking API
 
 export const store = configureStore({
   reducer: {
-    counter: counterReducer,
-    search: searchReducer,
+    // Add the generated reducer as a specific top-level slice
     [api.reducerPath]: api.reducer,
+    [bookingApi.reducerPath]: bookingApi.reducer,
+    // Add other reducers here if you have any
   },
   // Adding the api middleware enables caching, invalidation, polling,
   // and other useful features of `rtk-query`.
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(api.middleware),
+    getDefaultMiddleware()
+      .concat(api.middleware)
+      .concat(bookingApi.middleware),
 });
 
-setupListeners(store.dispatch)
+// optional, but required for refetchOnFocus/refetchOnReconnect behaviors
+setupListeners(store.dispatch);
