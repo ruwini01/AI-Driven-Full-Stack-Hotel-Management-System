@@ -4,11 +4,13 @@ import { motion } from "framer-motion";
 import { Hotel, Menu, X, User, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
-import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, useUser } from "@clerk/clerk-react";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const { user } = useUser();
+  const isAdmin = user?.publicMetadata?.role === "admin";
 
   const navLinks = [
     { name: "Hotels", path: "/hotels" },
@@ -26,7 +28,7 @@ const Navbar = () => {
       {/* Logo */} <Link to="/" className="flex items-center gap-2 group"> <div className="bg-primary p-2 rounded-lg group-hover:bg-primary-light transition-colors"> <Hotel className="w-6 h-6 text-primary-foreground" /> </div> <span className="text-2xl font-display font-bold gradient-text hidden sm:block">
         LuxStay </span> </Link>
 
-      
+
       {/* Desktop Navigation */}
       <div className="hidden md:flex items-center gap-6">
         {navLinks.map((link) => (
@@ -47,7 +49,9 @@ const Navbar = () => {
 
         <SignedOut>
           <Link to="/sign-in">
-            <Button variant="ghost" size="sm">Log In</Button>
+            <Button variant="ghost" size="sm">
+              Log In
+            </Button>
           </Link>
           <Link to="/sign-up">
             <Button size="sm">Sign Up</Button>
@@ -65,14 +69,16 @@ const Navbar = () => {
           </Button>
         </SignedIn>
 
-        <Button
-          size="sm"
-          onClick={() => navigate("/hotels")}
-          className="bg-primary hover:bg-primary-light gap-2"
-        >
-          <Search className="w-4 h-4" />
-          Book Now
-        </Button>
+        {!isAdmin && (
+          <Button
+            size="sm"
+            onClick={() => navigate("/hotels")}
+            className="bg-primary hover:bg-primary-light gap-2"
+          >
+            <Search className="w-4 h-4" />
+            Book Now
+          </Button>
+        )}
       </div>
 
       {/* Mobile Menu Button */}
@@ -133,17 +139,19 @@ const Navbar = () => {
                 </Button>
               </SignedIn>
 
-              <Button
-                size="sm"
-                onClick={() => {
-                  navigate("/hotels");
-                  setIsOpen(false);
-                }}
-                className="w-full bg-primary hover:bg-primary-light gap-2"
-              >
-                <Search className="w-4 h-4" />
-                Book Now
-              </Button>
+              {!isAdmin && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    navigate("/hotels");
+                    setIsOpen(false);
+                  }}
+                  className="w-full bg-primary hover:bg-primary-light gap-2"
+                >
+                  <Search className="w-4 h-4" />
+                  Book Now
+                </Button>
+              )}
             </div>
           </motion.div>
         )}
