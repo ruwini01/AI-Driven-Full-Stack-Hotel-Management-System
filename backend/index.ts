@@ -40,10 +40,12 @@ app.use(clerkMiddleware());
 import hotelRoute from './src/api/hotel';
 import reviewRoute from './src/api/review';
 import locationRoute from './src/api/location';
+import bookingsRouter from './src/api/booking';
 
 app.use('/api/hotels', hotelRoute);
 app.use('/api/reviews', reviewRoute);
 app.use('/api/locations', locationRoute);
+app.use('/api/bookings', bookingsRouter);
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
