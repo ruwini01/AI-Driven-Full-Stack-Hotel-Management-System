@@ -29,13 +29,16 @@ const createReview = async (
       userId: userId,
     });
 
-    hotel.reviews.push(review._id);
+    // Instead of push, increment the count
+    hotel.reviews = (hotel.reviews || 0) + 1;
     await hotel.save();
+
     res.status(201).send();
   } catch (error) {
     next(error);
   }
 };
+
 
 const getReviewsForHotel = async (
   req: Request,
