@@ -7,6 +7,7 @@ import { CreateHotelDTO, SearchHotelDTO } from "../domain/dtos/hotel";
 
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
+import { ObjectId } from "mongodb";
 
 export const getAllHotels = async (
   req: Request,
@@ -21,51 +22,6 @@ export const getAllHotels = async (
     next(error);
   }
 };
-
-// export const getAllHotelsBySearchQuery = async (
-//   req: Request,
-//   res: Response,
-//   next: NextFunction
-// ) => {
-//   try {
-//     const result = SearchHotelDTO.safeParse(req.query);
-//     if (!result.success) {
-//       throw new ValidationError(`${result.error.message}`);
-//     }
-//     const { query } = result.data;
-
-//     const queryEmbedding = await generateEmbedding(query);
-
-//     const hotels = await Hotel.aggregate([
-//       {
-//         $vectorSearch: {
-//           index: "hotel_vector_index",
-//           path: "embedding",
-//           queryVector: queryEmbedding,
-//           numCandidates: 25,
-//           limit: 4,
-//         },
-//       },
-//       {
-//         $project: {
-//           _id: 1,
-//           name: 1,
-//           location: 1,
-//           price: 1,
-//           image: 1,
-//           rating: 1,
-//           reviews: 1,
-//           score: { $meta: "vectorSearchScore" },
-//         },
-//       },
-//     ]);
-
-//     res.status(200).json(hotels);
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
 
 
 export const getAllHotelsBySearchQuery = async (
@@ -189,9 +145,10 @@ export const updateHotel = async (
   try {
     const _id = req.params._id;
     const hotelData = req.body;
+
+    // validate required fields
     if (
       !hotelData.name ||
-      !hotelData.image ||
       !hotelData.location ||
       !hotelData.price ||
       !hotelData.description
@@ -199,17 +156,18 @@ export const updateHotel = async (
       throw new ValidationError("Invalid hotel data");
     }
 
-    const hotel = await Hotel.findById(_id);
+    const hotel = await Hotel.findById({ _id: new ObjectId(_id) });
     if (!hotel) {
       throw new NotFoundError("Hotel not found");
     }
 
-    await Hotel.findByIdAndUpdate(_id, hotelData);
+    await Hotel.findByIdAndUpdate(_id, hotelData, { new: true });
     res.status(200).json(hotelData);
   } catch (error) {
     next(error);
   }
 };
+
 
 export const patchHotel = async (
   req: Request,
