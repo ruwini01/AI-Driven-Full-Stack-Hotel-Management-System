@@ -67,6 +67,23 @@ export const api = createApi({
         { type: "Hotels", id: review.hotelId },
       ],
     }),
+    updateHotel: build.mutation({
+      query: ({ id, data }) => ({
+        url: `hotels/${id}`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: [{ type: "Hotels", id: "LIST" }],
+    }),
+
+    deleteHotel: build.mutation({
+      query: (id) => ({
+        url: `hotels/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: [{ type: "Hotels", id: "LIST" }],
+    }),
+
   }),
 });
 
@@ -78,4 +95,7 @@ export const {
   useAddLocationMutation,
   useGetAllLocationsQuery,
   useAddReviewMutation,
+  useUpdateHotelMutation,
+  useDeleteHotelMutation
+
 } = api;
