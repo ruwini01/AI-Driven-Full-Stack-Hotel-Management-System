@@ -21,6 +21,14 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import { Provider } from "react-redux";
 import { store } from "./lib/store";
 import Payment from "./pages/Payment";
+import ProtectLayout from "./components/layouts/protect.layout";
+import AdminProtectLayout from "./components/layouts/admin-protect.layout";
+import CreateHotelPage from "./pages/admin/create-hotel.page";
+import RootProtectLayout from "./components/layouts/root-layout.page";
+import RootLayout from "./components/layouts/root-layout";
+import AdminBookings from "./pages/admin/booking";
+import EditHotel from "./pages/admin/edit-hotel";
+
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 if (!clerkPublishableKey) {
@@ -38,27 +46,48 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/hotels" element={<Hotels />} />
-              <Route path="/hotels/:id" element={<HotelDetails />} />
-              <Route path="/ai-search" element={<AISearch />} />
-              <Route path="/sign-in" element={<SignInPage />} />
-              <Route path="/sign-up" element={<SignUpPage />} />
-              <Route path="/my-account" element={<MyAccount />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/success" element={<Success />} />
-              <Route path="/cancel" element={<Cancel />} />
-              <Route path="/payment" element={<Payment/>}/>
-              <Route path="*" element={<NotFound />} />
+              <Route path="/" element={<RootLayout />}>
+
+                {/* HOME redirect depending on role */}
+                <Route index element={
+                  <RootProtectLayout>
+                    <Index />
+                  </RootProtectLayout>
+                }
+                />
+
+                <Route path="/hotels" element={<Hotels />} />
+
+                <Route element={<ProtectLayout />}>
+                  <Route path="/hotels/:id" element={<HotelDetails />} />
+                  <Route path="/my-account" element={<MyAccount />} />
+                </Route>
+
+                <Route element={<AdminProtectLayout />}>
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/admin/create-hotel" element={<CreateHotelPage />} />
+                  <Route path="/admin/bookings" element={<AdminBookings />}/>
+                  <Route path="/admin/edit-hotel/:id" element={<EditHotel />} />
+                </Route>
+
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/sign-in" element={<SignInPage />} />
+                <Route path="/sign-up" element={<SignUpPage />} />
+                <Route path="/ai-search" element={<AISearch />} />
+                <Route path="/success" element={<Success />} />
+                <Route path="/cancel" element={<Cancel />} />
+                <Route path="/payment" element={<Payment />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+
+
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
     </Provider>
-  </ClerkProvider>
+  </ClerkProvider >
 );
 
 export default App;
