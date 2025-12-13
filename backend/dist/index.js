@@ -15,27 +15,27 @@ const express_2 = require("@clerk/express");
 const app = (0, express_1.default)();
 exports.app = app;
 /* ------------------------------
-   CORS CONFIG (FINAL VERSION)
+   CORS CONFIG - ALLOW ALL ORIGINS
+   ⚠️ WARNING: Use with caution in production
 --------------------------------*/
-const frontendOrigins = [
-    process.env.FRONTEND_URL, // Your frontend Vercel domain
-    "http://localhost:5174", // Local frontend
-    "http://localhost:3000", // Alternative local frontend
-].filter(Boolean); // removes null/undefined
 app.use((0, cors_1.default)({
-    origin(origin, callback) {
-        if (!origin)
-            return callback(null, true); // Mobile apps, postman, same-domain
-        if (frontendOrigins.includes(origin)) {
-            callback(null, true);
-        }
-        else {
-            console.log("⛔ Blocked by CORS:", origin);
-            callback(new Error("Not allowed by CORS"));
-        }
-    },
+    origin: true, // Allow all origins
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+// Alternative: If you want to log which origins are accessing
+// app.use(
+//   cors({
+//     origin(origin, callback) {
+//       console.log("✅ Request from origin:", origin || "same-origin");
+//       callback(null, true); // Allow all
+//     },
+//     credentials: true,
+//     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+//     allowedHeaders: ['Content-Type', 'Authorization'],
+//   })
+// );
 app.use(express_1.default.json());
 app.use((0, express_2.clerkMiddleware)());
 /* ------------------------------
@@ -52,6 +52,20 @@ app.use("/api/bookings", booking_1.default);
 // Health check
 app.get("/api/health", (req, res) => {
     res.json({ status: "ok", message: "Server running" });
+});
+// Root route
+app.get("/", (req, res) => {
+    res.json({
+        message: "Hotel Management API",
+        status: "running",
+        endpoints: {
+            health: "/api/health",
+            hotels: "/api/hotels",
+            reviews: "/api/reviews",
+            locations: "/api/locations",
+            bookings: "/api/bookings"
+        }
+    });
 });
 // Global error middleware
 app.use(global_error_handling_middleware_1.default);
