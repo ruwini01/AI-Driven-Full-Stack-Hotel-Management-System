@@ -11,30 +11,14 @@ connectDB();
 const app = express();
 
 /* ------------------------------
-   CORS CONFIG - ALLOW ALL ORIGINS
-   ⚠️ WARNING: Use with caution in production
+   CORS CONFIG (ALLOW ALL ORIGINS)
 --------------------------------*/
 app.use(
   cors({
     origin: true, // Allow all origins
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
-
-// Alternative: If you want to log which origins are accessing
-// app.use(
-//   cors({
-//     origin(origin, callback) {
-//       console.log("✅ Request from origin:", origin || "same-origin");
-//       callback(null, true); // Allow all
-//     },
-//     credentials: true,
-//     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-//     allowedHeaders: ['Content-Type', 'Authorization'],
-//   })
-// );
 
 app.use(express.json());
 app.use(clerkMiddleware());
@@ -55,21 +39,6 @@ app.use("/api/bookings", bookingsRouter);
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "Server running" });
-});
-
-// Root route
-app.get("/", (req, res) => {
-  res.json({ 
-    message: "Hotel Management API",
-    status: "running",
-    endpoints: {
-      health: "/api/health",
-      hotels: "/api/hotels",
-      reviews: "/api/reviews",
-      locations: "/api/locations",
-      bookings: "/api/bookings"
-    }
-  });
 });
 
 // Global error middleware
