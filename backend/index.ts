@@ -1,4 +1,3 @@
-// index.ts
 import express from "express";
 import cors from "cors";
 import serverless from "serverless-http";
@@ -6,32 +5,19 @@ import connectDB from "./src/infrastructure/db";
 import globalErrorHandlingMiddleware from "./src/api/middleware/global-error-handling-middleware";
 import { clerkMiddleware } from "@clerk/express";
 
-/* ------------------------------
-   CREATE APP
---------------------------------*/
+// Create app
 const app = express();
 
-/* ------------------------------
-   HEALTH CHECK (early)
---------------------------------*/
-// Always respond fast without Clerk/DB delays
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", message: "Server running" });
-});
-
-/* ------------------------------
-   CONNECT TO MONGODB
---------------------------------*/
+/* ------------------------------------
+   CONNECT TO DB (Vercel optimized)
+--------------------------------------*/
 (async () => {
-  try {
-    await connectDB(); // cached connection reduces serverless cold start delays
-  } catch (err) {
-    console.error("MongoDB connection failed:", err);
-  }
+  // Only connects once because of cached logic in db.ts
+  await connectDB();
 })();
 
 /* ------------------------------
-   CORS CONFIG
+   CORS CONFIG (safe version)
 --------------------------------*/
 const allowedOrigins = [
   process.env.FRONTEND_URL,
@@ -45,8 +31,9 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+
       console.log("⛔ Blocked by CORS:", origin);
-      return callback(null, false); // safe for serverless
+      return callback(null, false); // safer than throwing in serverless
     },
     credentials: true,
   })
@@ -54,13 +41,20 @@ app.use(
 
 app.use(express.json());
 
-/* ------------------------------
+/* ------------------------------------
    CLERK MIDDLEWARE
---------------------------------*/
-app.use(clerkMiddleware()); // no wrapper needed
+--------------------------------------*/
+app.use((req, res, next) => {
+  try {
+    return clerkMiddleware()(req, res, next);
+  } catch (err) {
+    console.error("Clerk error:", err);
+    next();
+  }
+});
 
 /* ------------------------------
-   ROUTES
+   ROUTES — moved below DB
 --------------------------------*/
 import hotelRoute from "./src/api/hotel";
 import reviewRoute from "./src/api/review";
@@ -72,26 +66,17 @@ app.use("/api/reviews", reviewRoute);
 app.use("/api/locations", locationRoute);
 app.use("/api/bookings", bookingsRouter);
 
-/* ------------------------------
-   GLOBAL ERROR HANDLER
---------------------------------*/
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", message: "Server running" });
+});
+
+// Global error handler
 app.use(globalErrorHandlingMiddleware);
 
-
-/* ------------------------------
-   LOCAL DEVELOPMENT
---------------------------------*/
-if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 8000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Local server running at http://localhost:${PORT}`);
-  });
-}
-
-
-/* ------------------------------
-   EXPORT FOR VERCEL SERVERLESS
---------------------------------*/
+/* ------------------------------------
+   EXPORT HANDLER FOR VERCEL
+--------------------------------------*/
 const handler = serverless(app);
 export default handler;
 module.exports = handler;
