@@ -3,23 +3,37 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+// index.ts
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const serverless_http_1 = __importDefault(require("serverless-http"));
 const db_1 = __importDefault(require("./src/infrastructure/db"));
 const global_error_handling_middleware_1 = __importDefault(require("./src/api/middleware/global-error-handling-middleware"));
 const express_2 = require("@clerk/express");
-// Create app
+/* ------------------------------
+   CREATE APP
+--------------------------------*/
 const app = (0, express_1.default)();
-/* ------------------------------------
-   CONNECT TO DB (Vercel optimized)
---------------------------------------*/
+/* ------------------------------
+   HEALTH CHECK (early)
+--------------------------------*/
+// Always respond fast without Clerk/DB delays
+app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", message: "Server running" });
+});
+/* ------------------------------
+   CONNECT TO MONGODB
+--------------------------------*/
 (async () => {
-    // Only connects once because of cached logic in db.ts
-    await (0, db_1.default)();
+    try {
+        await (0, db_1.default)(); // cached connection reduces serverless cold start delays
+    }
+    catch (err) {
+        console.error("MongoDB connection failed:", err);
+    }
 })();
 /* ------------------------------
-   CORS CONFIG (safe version)
+   CORS CONFIG
 --------------------------------*/
 const allowedOrigins = [
     process.env.FRONTEND_URL,
@@ -32,25 +46,17 @@ app.use((0, cors_1.default)({
             return callback(null, true);
         }
         console.log("⛔ Blocked by CORS:", origin);
-        return callback(null, false); // safer than throwing in serverless
+        return callback(null, false); // safe for serverless
     },
     credentials: true,
 }));
 app.use(express_1.default.json());
-/* ------------------------------------
-   CLERK MIDDLEWARE
---------------------------------------*/
-app.use((req, res, next) => {
-    try {
-        return (0, express_2.clerkMiddleware)()(req, res, next);
-    }
-    catch (err) {
-        console.error("Clerk error:", err);
-        next();
-    }
-});
 /* ------------------------------
-   ROUTES — moved below DB
+   CLERK MIDDLEWARE
+--------------------------------*/
+app.use((0, express_2.clerkMiddleware)()); // no wrapper needed
+/* ------------------------------
+   ROUTES
 --------------------------------*/
 const hotel_1 = __importDefault(require("./src/api/hotel"));
 const review_1 = __importDefault(require("./src/api/review"));
@@ -60,15 +66,22 @@ app.use("/api/hotels", hotel_1.default);
 app.use("/api/reviews", review_1.default);
 app.use("/api/locations", location_1.default);
 app.use("/api/bookings", booking_1.default);
-// Health check
-app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", message: "Server running" });
-});
-// Global error handler
+/* ------------------------------
+   GLOBAL ERROR HANDLER
+--------------------------------*/
 app.use(global_error_handling_middleware_1.default);
-/* ------------------------------------
-   EXPORT HANDLER FOR VERCEL
---------------------------------------*/
+/* ------------------------------
+   LOCAL DEVELOPMENT
+--------------------------------*/
+if (process.env.NODE_ENV !== "production") {
+    const PORT = process.env.PORT || 8000;
+    app.listen(PORT, () => {
+        console.log(`🚀 Local server running at http://localhost:${PORT}`);
+    });
+}
+/* ------------------------------
+   EXPORT FOR VERCEL SERVERLESS
+--------------------------------*/
 const handler = (0, serverless_http_1.default)(app);
 exports.default = handler;
 module.exports = handler;
