@@ -1,8 +1,8 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import serverless from "serverless-http";
-import connectDB from "./src/infrastructure/db";
-import globalErrorHandlingMiddleware from "./src/api/middleware/global-error-handling-middleware";
+import connectDB from "./infrastructure/db";
+import globalErrorHandlingMiddleware from "./api/middleware/global-error-handling-middleware";
 import { clerkMiddleware } from "@clerk/express";
 
 // Connect DB once — Vercel serverless safe
@@ -41,10 +41,10 @@ app.use(clerkMiddleware());
 /* ------------------------------
    ROUTES
 --------------------------------*/
-import hotelRoute from "./src/api/hotel";
-import reviewRoute from "./src/api/review";
-import locationRoute from "./src/api/location";
-import bookingsRouter from "./src/api/booking";
+import hotelRoute from "./api/hotel";
+import reviewRoute from "./api/review";
+import locationRoute from "./api/location";
+import bookingsRouter from "./api/booking";
 
 app.use("/api/hotels", hotelRoute);
 app.use("/api/reviews", reviewRoute);

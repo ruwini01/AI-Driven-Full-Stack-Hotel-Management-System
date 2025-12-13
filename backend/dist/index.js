@@ -7,59 +7,65 @@ exports.app = void 0;
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const serverless_http_1 = __importDefault(require("serverless-http"));
-const db_1 = __importDefault(require("./src/infrastructure/db"));
-const global_error_handling_middleware_1 = __importDefault(require("./src/api/middleware/global-error-handling-middleware"));
+const db_1 = __importDefault(require("./infrastructure/db"));
+const global_error_handling_middleware_1 = __importDefault(require("./api/middleware/global-error-handling-middleware"));
 const express_2 = require("@clerk/express");
-// Connect to database
+// Connect DB once — Vercel serverless safe
 (0, db_1.default)();
 const app = (0, express_1.default)();
 exports.app = app;
-// Dynamic CORS configuration - allows same domain
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : [
-        process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
-        'http://localhost:5174',
-        'http://localhost:3000'
-    ].filter((origin) => Boolean(origin));
+/* ------------------------------
+   CORS CONFIG (FINAL VERSION)
+--------------------------------*/
+const frontendOrigins = [
+    process.env.FRONTEND_URL, // Your frontend Vercel domain
+    "http://localhost:5174", // Local frontend
+    "http://localhost:3000", // Alternative local frontend
+].filter(Boolean); // removes null/undefined
 app.use((0, cors_1.default)({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (same domain, mobile apps, Postman, etc.)
+    origin(origin, callback) {
         if (!origin)
-            return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
+            return callback(null, true); // Mobile apps, postman, same-domain
+        if (frontendOrigins.includes(origin)) {
             callback(null, true);
         }
         else {
-            callback(new Error('Not allowed by CORS'));
+            console.log("⛔ Blocked by CORS:", origin);
+            callback(new Error("Not allowed by CORS"));
         }
     },
-    credentials: true
+    credentials: true,
 }));
 app.use(express_1.default.json());
 app.use((0, express_2.clerkMiddleware)());
-// Routes
-const hotel_1 = __importDefault(require("./src/api/hotel"));
-const review_1 = __importDefault(require("./src/api/review"));
-const location_1 = __importDefault(require("./src/api/location"));
-const booking_1 = __importDefault(require("./src/api/booking"));
-app.use('/api/hotels', hotel_1.default);
-app.use('/api/reviews', review_1.default);
-app.use('/api/locations', location_1.default);
-app.use('/api/bookings', booking_1.default);
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-    res.status(200).json({ status: 'ok', message: 'Server is running' });
+/* ------------------------------
+   ROUTES
+--------------------------------*/
+const hotel_1 = __importDefault(require("./api/hotel"));
+const review_1 = __importDefault(require("./api/review"));
+const location_1 = __importDefault(require("./api/location"));
+const booking_1 = __importDefault(require("./api/booking"));
+app.use("/api/hotels", hotel_1.default);
+app.use("/api/reviews", review_1.default);
+app.use("/api/locations", location_1.default);
+app.use("/api/bookings", booking_1.default);
+// Health check
+app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", message: "Server running" });
 });
-// Global error handler
+// Global error middleware
 app.use(global_error_handling_middleware_1.default);
-// For local development
-if (process.env.NODE_ENV !== 'production') {
+/* ------------------------------------
+   LOCAL DEVELOPMENT ONLY (NOT VERCEL)
+---------------------------------------*/
+if (process.env.NODE_ENV !== "production") {
     const PORT = process.env.PORT || 8000;
     app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
+        console.log(`🚀 Local server running at http://localhost:${PORT}`);
     });
 }
-// Export for Vercel serverless
+/* ------------------------------------
+   EXPORT FOR VERCEL SERVERLESS
+---------------------------------------*/
 exports.default = (0, serverless_http_1.default)(app);
 //# sourceMappingURL=index.js.map
