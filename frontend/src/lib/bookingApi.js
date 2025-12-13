@@ -1,6 +1,9 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
+// Use environment variable or fallback to localhost
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+
+console.log("Booking API Base URL:", API_BASE_URL); // Debug log
 
 export const bookingApi = createApi({
   reducerPath: 'bookingApi',

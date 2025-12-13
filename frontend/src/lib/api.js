@@ -1,16 +1,23 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
+// Use environment variable or fallback to localhost
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
+console.log("API Base URL:", API_BASE_URL); // Debug log
+
 export const api = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({
-    baseUrl: "http://localhost:8000/api/",
+    baseUrl: API_BASE_URL,
     prepareHeaders: async (headers) => {
       return new Promise((resolve) => {
         async function checkToken() {
           const clerk = window.Clerk;
           if (clerk) {
             const token = await clerk.session?.getToken();
-            headers.set("Authorization", `Bearer ${token}`);
+            if (token) {
+              headers.set("Authorization", `Bearer ${token}`);
+            }
             resolve(headers);
           } else {
             setTimeout(checkToken, 500);
@@ -20,6 +27,7 @@ export const api = createApi({
       });
     },
   }),
+  tagTypes: ["Hotels", "Locations"],
   endpoints: (build) => ({
     getAllHotels: build.query({
       query: () => "hotels",
@@ -27,7 +35,7 @@ export const api = createApi({
     }),
     getHotelsBySearch: build.query({
       query: (search) => `hotels/search?query=${search}`,
-      providesTags: (result, error, search) => [{ type: "Hotels", id: search }], // FIXED: changed 'id' to 'search' and using 'id' in the tag
+      providesTags: (result, error, search) => [{ type: "Hotels", id: search }],
     }),
     getHotelById: build.query({
       query: (id) => `hotels/${id}`,
@@ -63,7 +71,7 @@ export const api = createApi({
         method: "POST",
         body: review,
       }),
-      invalidatesTags: (result, error, id) => [
+      invalidatesTags: (result, error, review) => [
         { type: "Hotels", id: review.hotelId },
       ],
     }),
@@ -75,7 +83,6 @@ export const api = createApi({
       }),
       invalidatesTags: [{ type: "Hotels", id: "LIST" }],
     }),
-
     deleteHotel: build.mutation({
       query: (id) => ({
         url: `hotels/${id}`,
@@ -83,7 +90,6 @@ export const api = createApi({
       }),
       invalidatesTags: [{ type: "Hotels", id: "LIST" }],
     }),
-
   }),
 });
 
@@ -96,6 +102,5 @@ export const {
   useGetAllLocationsQuery,
   useAddReviewMutation,
   useUpdateHotelMutation,
-  useDeleteHotelMutation
-
+  useDeleteHotelMutation,
 } = api;
