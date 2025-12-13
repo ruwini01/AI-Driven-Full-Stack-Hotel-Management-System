@@ -25,8 +25,7 @@ const createReview = async (req, res, next) => {
             comment: reviewData.comment,
             userId: userId,
         });
-        // Instead of push, increment the count
-        hotel.reviews = (hotel.reviews || 0) + 1;
+        hotel.reviews.push(review._id);
         await hotel.save();
         res.status(201).send();
     }

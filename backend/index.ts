@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import serverless from "serverless-http";
 import connectDB from "./src/infrastructure/db";
@@ -11,18 +11,18 @@ connectDB();
 const app = express();
 
 /* ------------------------------
-   CORS CONFIG
+   CORS CONFIG (FINAL VERSION)
 --------------------------------*/
 const frontendOrigins = [
-  process.env.FRONTEND_URL,
-  "http://localhost:5174",
-  "http://localhost:3000",
-].filter(Boolean);
+  process.env.FRONTEND_URL,            // Your frontend Vercel domain
+  "http://localhost:5174",             // Local frontend
+  "http://localhost:3000",             // Alternative local frontend
+].filter(Boolean); // removes null/undefined
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin) return callback(null, true);
+      if (!origin) return callback(null, true); // Mobile apps, postman, same-domain
 
       if (frontendOrigins.includes(origin)) {
         callback(null, true);
@@ -56,16 +56,21 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "Server running" });
 });
 
-// Global error handler
+// Global error middleware
 app.use(globalErrorHandlingMiddleware);
 
 /* ------------------------------------
-   EXPORT HANDLER FOR VERCEL
+   LOCAL DEVELOPMENT ONLY (NOT VERCEL)
 ---------------------------------------*/
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 8000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Local server running at http://localhost:${PORT}`);
+  });
+}
 
-// Export for ES modules
-const handler = serverless(app);
-export default handler;
-
-// Export for CommonJS (Vercel requires this)
-module.exports = handler;
+/* ------------------------------------
+   EXPORT FOR VERCEL SERVERLESS
+---------------------------------------*/
+export default serverless(app);
+export { app };
