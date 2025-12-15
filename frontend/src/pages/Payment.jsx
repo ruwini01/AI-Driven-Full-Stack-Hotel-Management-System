@@ -486,7 +486,7 @@ const Payment = () => {
                 )}
 
                 {clientSecret && !loading && !error && (
-                  <div className="stripe-checkout-container min-h-[400px]">
+                  <div className="stripe-checkout-container min-h-[750px]">
                     <EmbeddedCheckoutProvider
                       stripe={stripePromise}
                       options={{ clientSecret }}
