@@ -1,7 +1,10 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import Booking from '../infrastructure/entities/Booking';
 import Hotel from '../infrastructure/entities/Hotel';
 import { ObjectId } from 'mongodb';
+import { CreateBookingDTO } from "../domain/dtos/booking";
+import ValidationError from "../domain/errors/validation-error";
+import NotFoundError from "../domain/errors/not-found-error";
 
 // Helper function to get user ID from Clerk auth
 const getUserId = (req: Request): string | null => {

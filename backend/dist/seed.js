@@ -9,6 +9,7 @@ const Hotel_1 = __importDefault(require("./infrastructure/entities/Hotel"));
 const Location_1 = __importDefault(require("./infrastructure/entities/Location"));
 const Booking_1 = __importDefault(require("./infrastructure/entities/Booking"));
 const embeddings_1 = require("./application/utils/embeddings");
+const stripe_1 = __importDefault(require("./infrastructure/stripe"));
 // Sample hotels data with detailed descriptions
 const hotels = [
     {
@@ -455,8 +456,34 @@ const seedDatabase = async () => {
         });
         const toBeCreatedHotels = await Promise.all(hotelsWithEmbedding);
         // Insert hotels with embeddings
-        const createdHotels = await Hotel_1.default.insertMany(toBeCreatedHotels);
+        let createdHotels = await Hotel_1.default.insertMany(toBeCreatedHotels);
         console.log(`Created ${createdHotels.length} hotels`);
+        // Create Stripe product with default price for each hotel
+        console.log("\nCreating Stripe products for hotels...");
+        const withStripe = await Promise.all(createdHotels.map(async (hotel) => {
+            try {
+                const product = await stripe_1.default.products.create({
+                    name: hotel.name,
+                    description: hotel.description,
+                    default_price_data: {
+                        unit_amount: Math.round(hotel.price * 100),
+                        currency: "usd",
+                    },
+                });
+                const defaultPriceId = typeof product.default_price === "string"
+                    ? product.default_price
+                    : product.default_price?.id;
+                await Hotel_1.default.findByIdAndUpdate(hotel._id, { stripePriceId: defaultPriceId }, { new: true });
+                console.log(`✓ Stripe product created for ${hotel.name}`);
+                return { ...hotel.toObject(), stripePriceId: defaultPriceId };
+            }
+            catch (e) {
+                console.warn(`⚠ Stripe setup failed for hotel ${hotel.name}:`, e);
+                return hotel;
+            }
+        }));
+        createdHotels = withStripe;
+        console.log("\nStripe integration completed!");
         console.log("Database seeded successfully!");
         const getDateRange = (daysFromNow, duration) => {
             const checkIn = new Date();
@@ -787,11 +814,10 @@ const seedDatabase = async () => {
                     phone: '+1234567892'
                 }
             }
-            // Optional: Add more bookings if you want multiple bookings per user
         ];
         // Clear existing bookings (optional - comment out if you want to keep existing data)
         await Booking_1.default.deleteMany({});
-        console.log('Cleared existing bookings');
+        console.log('\nCleared existing bookings');
         // Insert seed data with proper date conversion
         const bookingsToInsert = bookingSeedData.map(booking => ({
             ...booking,
@@ -801,7 +827,7 @@ const seedDatabase = async () => {
             checkOut: undefined
         }));
         const insertedBookings = await Booking_1.default.insertMany(bookingsToInsert);
-        console.log(`Successfully seeded ${insertedBookings.length} bookings`);
+        console.log(`\nSuccessfully seeded ${insertedBookings.length} bookings`);
         // Display summary
         const summary = await Booking_1.default.aggregate([
             {
@@ -819,6 +845,7 @@ const seedDatabase = async () => {
         console.log("\n=== SEED SUMMARY ===");
         console.log(`Locations: ${createdLocations.length}`);
         console.log(`Hotels: ${createdHotels.length}`);
+        console.log(`Hotels with Stripe: ${createdHotels.filter((h) => h.stripePriceId).length}`);
         console.log(`Bookings: ${insertedBookings.length}`);
         process.exit(0);
     }

@@ -10,10 +10,14 @@ const serverless_http_1 = __importDefault(require("serverless-http"));
 const db_1 = __importDefault(require("./infrastructure/db"));
 const global_error_handling_middleware_1 = __importDefault(require("./api/middleware/global-error-handling-middleware"));
 const express_2 = require("@clerk/express");
+const body_parser_1 = __importDefault(require("body-parser"));
+const payment_1 = require("./application/payment");
 // Connect DB once — Vercel serverless safe
 (0, db_1.default)();
 const app = (0, express_1.default)();
 exports.app = app;
+// Stripe webhook must use raw body before json parser
+app.post("/api/stripe/webhook", body_parser_1.default.raw({ type: "application/json" }), payment_1.handleWebhook);
 /* ------------------------------
    CORS CONFIG (ALLOW ALL ORIGINS)
 --------------------------------*/
@@ -30,10 +34,12 @@ const hotel_1 = __importDefault(require("./api/hotel"));
 const review_1 = __importDefault(require("./api/review"));
 const location_1 = __importDefault(require("./api/location"));
 const booking_1 = __importDefault(require("./api/booking"));
+const payment_2 = __importDefault(require("./api/payment"));
 app.use("/api/hotels", hotel_1.default);
 app.use("/api/reviews", review_1.default);
 app.use("/api/locations", location_1.default);
 app.use("/api/bookings", booking_1.default);
+app.use("/api/payments", payment_2.default);
 // Health check
 app.get("/api/health", (req, res) => {
     res.json({ status: "ok", message: "Server running" });

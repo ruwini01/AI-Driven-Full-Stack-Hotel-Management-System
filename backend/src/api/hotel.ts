@@ -10,6 +10,7 @@ import {
   deleteHotel,
   getAllHotelsBySearchQuery,
   checkHotelEmbeddings,
+  createHotelStripePrice,
 } from "../application/hotel";
 import isAuthenticated from "./middleware/authentication-middleware";
 import isAdmin from "./middleware/authorization-middleware";
@@ -37,6 +38,10 @@ hotelsRouter
   .patch(patchHotel)
   .delete(deleteHotel);
 
+
+hotelsRouter
+  .route("/:_id/stripe/price")
+  .post(isAuthenticated, isAdmin, createHotelStripePrice);
 
   // In hotels-router.ts
 hotelsRouter.route("/check-embeddings").get(checkHotelEmbeddings);

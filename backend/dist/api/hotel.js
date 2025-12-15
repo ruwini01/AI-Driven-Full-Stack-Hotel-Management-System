@@ -25,6 +25,9 @@ hotelsRouter
     .put(hotel_1.updateHotel)
     .patch(hotel_1.patchHotel)
     .delete(hotel_1.deleteHotel);
+hotelsRouter
+    .route("/:_id/stripe/price")
+    .post(authentication_middleware_1.default, authorization_middleware_1.default, hotel_1.createHotelStripePrice);
 // In hotels-router.ts
 hotelsRouter.route("/check-embeddings").get(hotel_1.checkHotelEmbeddings);
 exports.default = hotelsRouter;

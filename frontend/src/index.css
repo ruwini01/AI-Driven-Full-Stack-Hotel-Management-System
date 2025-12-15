@@ -231,6 +231,18 @@ background-size: 200% 100%;
 animation: shimmer 1.5s infinite;
 }
 
+
+.stripe-checkout-container {
+  width: 100%;
+  min-height: 750px;
+  overflow: visible;
+}
+
+.stripe-checkout-container iframe {
+  min-height: 700px !important;
+}
+
+
 @keyframes shimmer {
 0% { background-position: -200% 0; }
 100% { background-position: 200% 0; }

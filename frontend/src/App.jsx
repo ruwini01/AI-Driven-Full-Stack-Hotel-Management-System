@@ -20,7 +20,6 @@ import MyAccount from "./pages/MyAccount";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { Provider } from "react-redux";
 import { store } from "./lib/store";
-import Payment from "./pages/Payment";
 import ProtectLayout from "./components/layouts/protect.layout";
 import AdminProtectLayout from "./components/layouts/admin-protect.layout";
 import CreateHotelPage from "./pages/admin/create-hotel.page";
@@ -28,6 +27,8 @@ import RootProtectLayout from "./components/layouts/root-layout.page";
 import RootLayout from "./components/layouts/root-layout";
 import AdminBookings from "./pages/admin/booking";
 import EditHotel from "./pages/admin/edit-hotel";
+import Payment from "@/pages/Payment";
+import BookingComplete from "@/pages/BookingComplete";
 
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -66,7 +67,7 @@ const App = () => (
                 <Route element={<AdminProtectLayout />}>
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/admin/create-hotel" element={<CreateHotelPage />} />
-                  <Route path="/admin/bookings" element={<AdminBookings />}/>
+                  <Route path="/admin/bookings" element={<AdminBookings />} />
                   <Route path="/admin/edit-hotel/:id" element={<EditHotel />} />
                 </Route>
 
@@ -78,6 +79,7 @@ const App = () => (
                 <Route path="/success" element={<Success />} />
                 <Route path="/cancel" element={<Cancel />} />
                 <Route path="/payment" element={<Payment />} />
+                <Route path="/booking/complete" element={<BookingComplete />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
 

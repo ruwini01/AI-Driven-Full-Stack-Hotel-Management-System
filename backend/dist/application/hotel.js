@@ -3,11 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkHotelEmbeddings = exports.deleteHotel = exports.patchHotel = exports.updateHotel = exports.getHotelById = exports.createHotel = exports.getAllHotelsBySearchQuery = exports.getAllHotels = void 0;
+exports.checkHotelEmbeddings = exports.createHotelStripePrice = exports.deleteHotel = exports.patchHotel = exports.updateHotel = exports.getHotelById = exports.createHotel = exports.getAllHotelsBySearchQuery = exports.getAllHotels = void 0;
 const Hotel_1 = __importDefault(require("../infrastructure/entities/Hotel"));
 const not_found_error_1 = __importDefault(require("../domain/errors/not-found-error"));
 const validation_error_1 = __importDefault(require("../domain/errors/validation-error"));
 const embeddings_1 = require("./utils/embeddings");
+const stripe_1 = __importDefault(require("../infrastructure/stripe"));
 const hotel_1 = require("../domain/dtos/hotel");
 const mongodb_1 = require("mongodb");
 const getAllHotels = async (req, res, next) => {
@@ -92,7 +93,23 @@ const createHotel = async (req, res, next) => {
             throw new validation_error_1.default(`${result.error.message}`);
         }
         const embedding = await (0, embeddings_1.generateEmbedding)(`${result.data.name} ${result.data.description} ${result.data.location} ${result.data.price}`);
-        await Hotel_1.default.create({ ...result.data, embedding });
+        // Create Stripe product with default price for the nightly rate
+        const product = await stripe_1.default.products.create({
+            name: result.data.name,
+            description: result.data.description,
+            default_price_data: {
+                unit_amount: Math.round(result.data.price * 100),
+                currency: "usd",
+            },
+        });
+        const defaultPriceId = typeof product.default_price === "string"
+            ? product.default_price
+            : product.default_price?.id;
+        await Hotel_1.default.create({
+            ...result.data,
+            embedding,
+            stripePriceId: defaultPriceId,
+        });
         res.status(201).send();
     }
     catch (error) {
@@ -171,6 +188,33 @@ const deleteHotel = async (req, res, next) => {
     }
 };
 exports.deleteHotel = deleteHotel;
+const createHotelStripePrice = async (req, res, next) => {
+    try {
+        const _id = req.params._id;
+        const hotel = await Hotel_1.default.findById(_id);
+        if (!hotel) {
+            throw new not_found_error_1.default("Hotel not found");
+        }
+        // Create a product with default price for the hotel's nightly rate
+        const product = await stripe_1.default.products.create({
+            name: hotel.name,
+            description: hotel.description,
+            default_price_data: {
+                unit_amount: Math.round(hotel.price * 100),
+                currency: "usd",
+            },
+        });
+        const defaultPriceId = typeof product.default_price === "string"
+            ? product.default_price
+            : product.default_price?.id;
+        const updated = await Hotel_1.default.findByIdAndUpdate(_id, { stripePriceId: defaultPriceId }, { new: true });
+        res.status(200).json(updated);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.createHotelStripePrice = createHotelStripePrice;
 // In hotel.ts controller
 const checkHotelEmbeddings = async (req, res, next) => {
     try {
