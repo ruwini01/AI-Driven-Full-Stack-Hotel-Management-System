@@ -191,7 +191,7 @@ const Payment = () => {
       console.error("Error object:", err);
       console.error("Error message:", err?.message);
       console.error("Error data:", err?.data);
-      
+
       const errorMessage = err?.data?.message || err.message || "Failed to initialize payment";
       setError(errorMessage);
       toast.error(errorMessage);
@@ -486,7 +486,7 @@ const Payment = () => {
                 )}
 
                 {clientSecret && !loading && !error && (
-                  <div className="stripe-checkout-container min-h-[750px]">
+                  <div className="stripe-checkout-container min-h-[800px] overflow-y-auto">
                     <EmbeddedCheckoutProvider
                       stripe={stripePromise}
                       options={{ clientSecret }}
