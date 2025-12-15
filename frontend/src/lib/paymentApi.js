@@ -35,7 +35,7 @@ export const paymentApi = createApi({
     // Get session status
     getSessionStatus: builder.query({
       query: (sessionId) => ({
-        url: '/payments/session-status',
+        url: '/payments/complete',
         params: { session_id: sessionId },
       }),
       providesTags: ['Payment'],
