@@ -57,6 +57,9 @@ const Payment = () => {
   const [phone, setPhone] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
 
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+
+
   // Verify Stripe loads correctly
   useEffect(() => {
     stripePromise.catch((error) => {
@@ -489,12 +492,33 @@ const Payment = () => {
                   <div className="stripe-checkout-container min-h-[800px] overflow-y-auto">
                     <EmbeddedCheckoutProvider
                       stripe={stripePromise}
-                      options={{ clientSecret }}
+                      options={{
+                        clientSecret,
+                        onComplete: () => {
+                          console.log("✅ Payment completed");
+                          setPaymentCompleted(true);
+                        }
+                      }}
                     >
                       <EmbeddedCheckout />
                     </EmbeddedCheckoutProvider>
+
                   </div>
                 )}
+
+                {paymentCompleted && (
+                  <div className="mt-6 flex justify-center">
+                    <Button
+                      size="lg"
+                      onClick={() =>
+                        navigate(`/booking/complete?session_id=${clientSecret}`)
+                      }
+                    >
+                      View Booking Confirmation
+                    </Button>
+                  </div>
+                )}
+
 
                 <div className="mt-6 p-4 bg-muted/50 rounded-lg">
                   <p className="text-sm text-center text-muted-foreground">
